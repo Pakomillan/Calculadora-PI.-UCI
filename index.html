@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Pérdidas Insensibles - UCI</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 480px; }
+        h2 { color: #2c3e50; text-align: center; border-bottom: 3px solid #3498db; padding-bottom: 12px; margin-top: 0; }
+        .input-group { margin-bottom: 18px; padding: 12px; border: 1px solid #edf2f7; border-radius: 10px; background-color: #fcfcfc; }
+        label { display: block; margin-bottom: 6px; font-weight: bold; color: #34495e; font-size: 14px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        button { width: 100%; padding: 16px; background-color: #3498db; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+        button:hover { background-color: #2980b9; }
+        #resultado { margin-top: 25px; padding: 20px; border-radius: 10px; display: none; border: 2px solid #3498db; background-color: #f0f9ff; }
+        .dato-linea { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; border-bottom: 1px dashed #cbd5e0; padding-bottom: 4px; }
+        .total-final { font-size: 22px; font-weight: bold; color: #2c3e50; text-align: center; margin-top: 10px; }
+        .info-text { font-size: 12px; color: #718096; margin-top: 10px; font-style: italic; text-align: center; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Calculadora de Pérdidas Insensibles</h2>
+    
+    <div class="grid">
+        <div class="input-group">
+            <label>Peso Paciente (kg):</label>
+            <input type="number" id="peso" placeholder="Ej: 70">
+        </div>
+        <div class="input-group">
+            <label>Horas del Turno:</label>
+            <input type="number" id="horas" placeholder="Ej: 7">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>Estado Respiratorio:</label>
+        <select id="respiratorio">
+            <option value="0.5">a) Sin ventilación mecánica (x 0.5)</option>
+            <option value="1.0">b) VM sin humidificación activa (x 1.0)</option>
+            <option value="0.25">c) VM con humidificación activa (x 0.25)</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>Ajuste por Fiebre (>37.5 ºC):</label>
+        <div class="grid">
+            <div>
+                <span style="font-size: 11px; color: #4a5568;">Grados extra</span>
+                <input type="number" id="fGrados" placeholder="0">
+            </div>
+            <div>
+                <span style="font-size: 11px; color: #4a5568;">Horas fiebre</span>
+                <input type="number" id="fHoras" placeholder="0">
+            </div>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>Ajuste por Sudoración:</label>
+        <select id="sudor">
+            <option value="0">Sin sudoración</option>
+            <option value="10">Leve (+10 ml/h)</option>
+            <option value="20">Moderada (+20 ml/h)</option>
+            <option value="40">Profusa / Diaforesis (+40 ml/h)</option>
+        </select>
+    </div>
+
+    <button onclick="calcular()">CALCULAR BALANCE NETO</button>
+
+    <div id="resultado">
+        <div class="dato-linea">
+            <span>(-) Pérdidas Totales (P.I.):</span>
+            <span id="resPI" style="color: #c0392b; font-weight: bold;">0 ml</span>
+        </div>
+        <div class="dato-linea">
+            <span>(+) Agua Endógena:</span>
+            <span id="resAgua" style="color: #27ae60; font-weight: bold;">0 ml</span>
+        </div>
+        <div class="total-final">
+            Resultado Neto: <span id="valorFinal">0</span> ml
+        </div>
+        <p class="info-text">
+            Este valor representa el ajuste final de invisibles.<br>
+            <strong>Si es negativo</strong>, añadir a Egresos.<br>
+            <strong>Si es positivo</strong>, añadir a Ingresos.
+        </p>
+    </div>
+</div>
+
+<script>
+    function calcular() {
+        const peso = parseFloat(document.getElementById('peso').value);
+        const horas = parseFloat(document.getElementById('horas').value);
+        const factorResp = parseFloat(document.getElementById('respiratorio').value);
+        const fGrados = parseFloat(document.getElementById('fGrados').value) || 0;
+        const fHoras = parseFloat(document.getElementById('fHoras').value) || 0;
+        const sudorExtra = parseFloat(document.getElementById('sudor').value) || 0;
+
+        if (isNaN(peso) || isNaN(horas)) {
+            alert("Por favor, introduce el peso y las horas del turno.");
+            return;
+        }
+
+        // 1. CÁLCULO PÉRDIDAS INSENSIBLES (P.I.)
+        let piBase = factorResp * peso * horas;
+        let extraFiebre = 0.1 * peso * fGrados * fHoras;
+        let extraSudor = sudorExtra * horas;
+        let totalPI = piBase + extraFiebre + extraSudor;
+
+        // 2. CÁLCULO AGUA ENDÓGENA (A.E.)
+        // Estándar 300ml / 24h = 12.5 ml por hora
+        let totalAE = 12.5 * horas;
+
+        // 3. BALANCE NETO
+        let neto = totalAE - totalPI;
+
+        // Mostrar resultados redondeados
+        document.getElementById('resPI').innerText = "-" + Math.round(totalPI) + " ml";
+        document.getElementById('resAgua').innerText = "+" + Math.round(totalAE) + " ml";
+        document.getElementById('valorFinal').innerText = (neto > 0 ? "+" : "") + Math.round(neto);
+        
+        document.getElementById('resultado').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
